@@ -1,0 +1,54 @@
+const int ledPower = 2;      // Control pin for sensor IR LED
+const int dustPin  = A0;     // Analog output from sensor
+const int indicator = 8;     // LED indicator pin
+const int fanPin    = 9;     // Fan control pin
+
+int samplingTime = 280;
+int deltaTime = 40;
+int sleepTime = 9680;
+
+float voMeasured = 0;
+float calcVoltage = 0;
+float dustDensity = 0;
+
+void setup() {
+  pinMode(ledPower, OUTPUT);
+  pinMode(indicator, OUTPUT);
+  pinMode(fanPin, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+  // Sensor reading cycle
+  digitalWrite(ledPower, LOW);
+  delayMicroseconds(samplingTime);
+
+  voMeasured = analogRead(dustPin);
+
+  delayMicroseconds(deltaTime);
+  digitalWrite(ledPower, HIGH);
+  delayMicroseconds(sleepTime);
+
+  // Convert to voltage
+  calcVoltage = voMeasured * (5.0 / 1024.0);
+
+  // Dust density calculation (datasheet equation, mg/m3)
+  dustDensity = (0.17 * calcVoltage - 0.1) * 1000.0;
+
+  // Print values for monitoring
+  Serial.print("Raw: "); Serial.print(voMeasured);
+  Serial.print("  Voltage: "); Serial.print(calcVoltage);
+  Serial.print(" V  Dust Density: "); Serial.print(dustDensity);
+  Serial.println(" ug/m3");
+
+  // Threshold for smoke detection
+  if (dustDensity > 100) {  // adjust experimentally
+    digitalWrite(fanPin, HIGH);   // Turn fan ON
+    digitalWrite(indicator, HIGH); // LED ON = Warning
+  } else {
+    digitalWrite(fanPin, LOW);    // Fan OFF
+    digitalWrite(indicator, LOW); // LED OFF = Safe
+  }
+
+  delay(1000); // 1 second sampling
+}
